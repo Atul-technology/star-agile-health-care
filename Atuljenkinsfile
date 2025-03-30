@@ -1,129 +1,99 @@
-pipeline {
 
+
+pipeline {
     agent any
 
-    stages {
-
-        stage('Checkout') {
-
-            steps {
-
-                echo "checked out"
-
-                sleep(time: 800, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Build') {
-
-            steps {
-
-                echo "code compiled"
-
-                sleep(time: 5000, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Test') {
-
-            steps {
-
-                echo "maven test"
-
-                sleep(time: 13000, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Package') {
-
-            steps {
-
-                echo "packaging your code"
-
-                sleep(time: 1500, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Provision Test Infrastructure') {
-
-            steps {
-
-                echo "provisioning test infrastructure"
-
-                sleep(time: 25000, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Configure Servers') {
-
-            steps {
-
-                echo "configuring servers"
-
-                sleep(time: 1000, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Docker Build') {
-
-            steps {
-
-                echo "built the docker image"
-
-                sleep(time: 15000, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Deploy to Test') {
-
-            steps {
-
-                echo "deployed the test phase"
-
-                sleep(time: 14000, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Deploy to Production') {
-
-            steps {
-
-                echo "deployed the production phase"
-
-                sleep(time: 16000, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
- 
-        stage('Setup Monitoring') {
-
-            steps {
-
-                echo "monitoring"
-
-                sleep(time: 20000, unit: 'MILLISECONDS') // Pauses for 15 seconds
-
-            }
-
-        }
-
+    tools {
+        maven 'Apache Maven 3.8.7'
     }
 
+    environment {
+        IMAGE_NAME = 'atul0074/insureme:1.0'
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                echo 'Cloning the Git repository'
+                git branch: 'main', url: 'https://github.com/Atul-technology/InsureMe-20Mar'
+            }
+        }
+
+        stage('Maven Build & Test') {
+            steps {
+                echo 'Building the application and running tests using Maven'
+                sh 'mvn clean package test'
+            }
+        }
+
+        stage('Test Results') {
+            steps {
+                echo 'Publishing test results'
+                script {
+                    try {
+                        publishHTML([
+                            reportDir: 'target/surefire-reports',
+                            reportFiles: 'index.html',
+                            reportName: 'Test Report'
+                        ])
+                    } catch (Exception e) {
+                        echo "Skipping test report: ${e.message}"
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                echo 'Building Docker image'
+                sh "docker build -t $IMAGE_NAME ."
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockercode', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    echo 'Logging in to DockerHub...'
+                    script {
+                        retry(3) {
+                            sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                echo 'Pushing Docker image to DockerHub'
+                script {
+                    retry(3) {
+                        sh "docker push $IMAGE_NAME"
+                    }
+                }
+            }
+        }
+
+        stage('Run Ansible Playbook') {
+            steps {
+                echo 'Executing Ansible Playbook for deployment'
+                script {
+                    try {
+                        ansiblePlaybook become: true, credentialsId: 'ansible', disableHostKeyChecking: true, installation: 'ansible', inventory: '/etc/ansible/hosts', playbook: 'deploy.yml', sudoUser: null, vaultTmpPath: ''
+                    } catch (Exception e) {
+                        echo "Ansible deployment failed: ${e.message}"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Build and deployment completed successfully!'
+        }
+        failure {
+            echo 'Build failed! Please check the logs.'
+        }
+    }
 }
