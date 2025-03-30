@@ -29,7 +29,7 @@ pipeline {
                 echo 'Publishing test results'
                 script {
                     try {
-                        publishHTML(target: [
+                        publishHTML([
                             reportDir: 'target/surefire-reports',
                             reportFiles: 'index.html',
                             reportName: 'Test Report'
