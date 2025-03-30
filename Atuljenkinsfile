@@ -84,7 +84,7 @@ pipeline {
                 echo 'Executing Ansible Playbook for deployment'
                 script {
                     try {
-                        ansiblePlaybook become: true, credentialsId: 'ansible', disableHostKeyChecking: true, installation: 'ansible', inventory: '/etc/ansible/hosts', playbook: './ansible/deploy.yml'
+                        ansiblePlaybook become: true, credentialsId: 'ansible', disableHostKeyChecking: true, installation: 'ansible', inventory: '/etc/ansible/hosts', playbook: 'deploy.yml'
                     } catch (Exception e) {
                         echo "Ansible deployment failed: ${e.message}"
                     }
