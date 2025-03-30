@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -14,7 +13,7 @@ pipeline {
         stage('Git Checkout') {
             steps {
                 echo 'Cloning the Git repository'
-                git branch: 'main', url: 'https://github.com/Atul-technology/star-agile-health-care'
+                git branch: 'main', url: 'https://github.com/Atul-technology/star-agile-health-care.git'
             }
         }
 
@@ -30,7 +29,7 @@ pipeline {
                 echo 'Publishing test results'
                 script {
                     try {
-                        publishHTML([
+                        publishHTML(target: [
                             reportDir: 'target/surefire-reports',
                             reportFiles: 'index.html',
                             reportName: 'Test Report'
@@ -78,11 +77,20 @@ pipeline {
                 echo 'Executing Ansible Playbook for deployment'
                 script {
                     try {
-                        ansiblePlaybook become: true, credentialsId: 'ansible', disableHostKeyChecking: true, installation: 'ansible', inventory: '/etc/ansible/hosts', playbook: 'deploy.yml', sudoUser: null, vaultTmpPath: ''
+                        ansiblePlaybook become: true, credentialsId: 'ansible', disableHostKeyChecking: true, installation: 'ansible', inventory: '/etc/ansible/hosts', playbook: 'deploy.yml'
                     } catch (Exception e) {
                         echo "Ansible deployment failed: ${e.message}"
                     }
                 }
+            }
+        }
+
+        stage('Deploy to Production') {
+            when {
+                expression { currentBuild.currentResult == 'SUCCESS' }
+            }
+            steps {
+                sh 'kubectl apply -f kubernetes/prod-deployment.yml'
             }
         }
     }
