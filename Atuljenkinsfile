@@ -7,6 +7,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'atul0074/medicure:1.0'
+        KUBECONFIG = '/path/to/kubeconfig' // Add your actual kubeconfig path here
     }
 
     stages {
@@ -94,6 +95,7 @@ pipeline {
 
         stage('Deploy to Production') {
             steps {
+                echo 'Deploying to Kubernetes using KUBECONFIG'
                 sh 'kubectl apply -f kubernetes/prod-deployment.yml --validate=false'
             }
         }
