@@ -93,9 +93,6 @@ pipeline {
         }
 
         stage('Deploy to Production') {
-            when {
-                expression { currentBuild.currentResult == 'SUCCESS' }
-            }
             steps {
                 sh 'kubectl apply -f kubernetes/prod-deployment.yml --validate=false'
             }
